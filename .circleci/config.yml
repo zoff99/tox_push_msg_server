@@ -38,6 +38,19 @@ jobs:
 
 
       - run: ls -al
+      - run: cp -av fcm_config.h_example fcm_config.h
+      - run: clang-10 -O3 -g -fPIC -Wall -Wextra
+             -fno-omit-frame-pointer
+             -fsanitize=address
+             -fstack-protector-all
+             --param=ssp-buffer-size=1
+             -Wlarger-than=5000
+             -Wframe-larger-than=5000
+             -Wvla
+             -Werror=div-by-zero
+             tox_push_msg_server.c
+             -lcurl
+             -o tox_push_msg_server
 
 
       - store_artifacts:
