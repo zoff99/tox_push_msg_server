@@ -18,9 +18,8 @@ jobs:
           apt update &&
           export DEBIAN_FRONTEND=noninteractive ; apt install -y --no-install-recommends
             gcc
-            pkg-config
-            zip grep file ca-certificates autotools-dev autoconf automake
-            git bc wget rsync make pkg-config libtool
+            zip grep file ca-certificates
+            git
             ssh gzip tar unzip
             libcurl4-gnutls-dev
 
