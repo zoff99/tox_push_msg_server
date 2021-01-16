@@ -1,0 +1,7 @@
+#ifndef C_FCM_CONFIG_H
+#define C_FCM_CONFIG_H
+
+static const char FCM__server_key[] = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+static const char FCM__dest_url[] = "https://fcm.googleapis.com/fcm/send";
+
+#endif // C_FCM_CONFIG_H
