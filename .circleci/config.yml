@@ -44,7 +44,7 @@ jobs:
              -Wvla
              -Werror=div-by-zero
              -Wpointer-arith
-             -Wimplicit-fallthrough=5
+             -Wimplicit-fallthrough
              -Werror=implicit-function-declaration
              -Wformat=0
              -Wno-misleading-indentation
