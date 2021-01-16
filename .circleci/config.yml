@@ -17,16 +17,12 @@ jobs:
       - run: &apt_install
           apt update &&
           export DEBIAN_FRONTEND=noninteractive ; apt install -y --no-install-recommends
-            cmake
-            gcc g++
-            libconfig-dev
-            libgtest-dev
-            ninja-build
+            gcc
             pkg-config
             zip grep file ca-certificates autotools-dev autoconf automake
-            git bc wget rsync cmake make pkg-config libtool
+            git bc wget rsync make pkg-config libtool
             ssh gzip tar unzip
-            coreutils
+            libcurl4-gnutls-dev
 
       - checkout
 
@@ -34,12 +30,12 @@ jobs:
           export DEBIAN_FRONTEND=noninteractive ; apt install -y --no-install-recommends clang-10
       - run: dpkg -l | grep clang
       - run: type -a clang-10
-      - run: clang-10 --version
+      - run: clang-11 --version
 
 
       - run: ls -al
       - run: cp -av fcm_config.h_example fcm_config.h
-      - run: clang-10 -O3 -g -fPIC -Wall -Wextra
+      - run: clang-11 -O3 -g -fPIC -Wall -Wextra
              -fno-omit-frame-pointer
              -fsanitize=address
              -fstack-protector-all
