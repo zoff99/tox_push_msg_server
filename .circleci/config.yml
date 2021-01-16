@@ -27,9 +27,9 @@ jobs:
       - checkout
 
       - run: &apt_install
-          export DEBIAN_FRONTEND=noninteractive ; apt install -y --no-install-recommends clang-10
+          export DEBIAN_FRONTEND=noninteractive ; apt install -y --no-install-recommends clang-11
       - run: dpkg -l | grep clang
-      - run: type -a clang-10
+      - run: type -a clang-11
       - run: clang-11 --version
 
 
