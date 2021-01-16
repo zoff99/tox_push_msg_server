@@ -52,4 +52,4 @@ jobs:
 
       - store_artifacts:
           path: ~/work/tox_push_msg_server
-          destination: bin
+          destination: tox_push_msg_server.amd64.linux
