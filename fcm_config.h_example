@@ -3,5 +3,6 @@
 
 static const char FCM__server_key[] = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
 static const char FCM__dest_url[] = "https://fcm.googleapis.com/fcm/send";
+#define HSTATIC_PORT 7654
 
 #endif // C_FCM_CONFIG_H

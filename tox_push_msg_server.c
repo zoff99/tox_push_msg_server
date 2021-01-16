@@ -71,7 +71,6 @@ int trigger_push(const char *device_token_str);
 
 
 #define HSTATIC_EPOLL_EVENTS 64
-#define HSTATIC_PORT 8787
 #define HSTATIC_TCP_BACKLOG 4
 #define HSTATIC_TCP_MAX_INPUT_BYTES 4096
 
