@@ -34,6 +34,7 @@ jobs:
       - run: ls -al
       - run: cp -av fcm_config.h_example fcm_config.h
       - run: clang-11 -O3 -g -fPIC -Wall -Wextra
+             -pedantic
              -fno-omit-frame-pointer
              -fsanitize=address
              -fstack-protector-all
@@ -42,6 +43,13 @@ jobs:
              -Wframe-larger-than=5000
              -Wvla
              -Werror=div-by-zero
+             -Wpointer-arith
+             -Wimplicit-fallthrough=5
+             -Werror=implicit-function-declaration
+             -Wformat=0
+             -Wno-misleading-indentation
+             -Werror
+             -fdiagnostics-color=always
              tox_push_msg_server.c
              -lcurl
              -o tox_push_msg_server
