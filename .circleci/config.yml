@@ -47,7 +47,9 @@ jobs:
              -lcurl
              -o tox_push_msg_server
 
+      - run: ldd tox_push_msg_server
+      - run: ls -al tox_push_msg_server
 
       - store_artifacts:
-          path: ~/work/artefacts
-          destination: artefacts
+          path: ~/work/tox_push_msg_server
+          destination: bin
