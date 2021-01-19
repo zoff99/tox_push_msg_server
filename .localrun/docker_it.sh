@@ -79,26 +79,43 @@ cd /workspace/build/
 
 cp -av fcm_config.h_example fcm_config.h
 
-clang-11 -O3 -g -fPIC -Wall -Wextra \
-             -pedantic \
-             -fno-omit-frame-pointer \
-             -fsanitize=address \
-             -fstack-protector-all \
-             --param=ssp-buffer-size=1 \
-             -Wlarger-than=5000 \
-             -Wframe-larger-than=5000 \
-             -Wvla \
-             -Werror=div-by-zero \
-             -Wpointer-arith \
-             -Wimplicit-fallthrough \
-             -Werror=implicit-function-declaration \
-             -Wformat=0 \
-             -Wno-misleading-indentation \
-             -Werror \
-             -fdiagnostics-color=always \
-             tox_push_msg_server.c \
-             -lcurl \
-             -o tox_push_msg_server
+add_config_flag() { CONFIG_FLAGS="$CONFIG_FLAGS $@";    }
+add_c_flag()      { C_FLAGS="$C_FLAGS $@";              }
+add_cxx_flag()    { CXX_FLAGS="$CXX_FLAGS $@";          }
+add_ld_flag()     { LD_FLAGS="$LD_FLAGS $@";            }
+add_flag()        { add_c_flag "$@"; add_cxx_flag "$@"; }
+unset CONFIG_FLAGS
+unset C_FLAGS
+unset CXX_FLAGS
+unset LD_FLAGS
+unset CFLAGS
+unset CXXFLAGS
+unset CPPFLAGS
+unset LDFLAGS
+
+add_flag -O2 -march=native
+add_c_flag -pedantic
+add_c_flag -std=c99
+add_flag -g3
+add_flag -ftrapv
+# Add all warning flags we can.
+add_flag -Wall
+add_flag -Wextra
+add_flag -Weverything
+add_flag -Werror
+add_flag -fdiagnostics-color=always
+add_flag -fno-omit-frame-pointer
+add_flag -fsanitize=address
+add_flag -fstack-protector-all
+add_flag --param=ssp-buffer-size=1
+add_flag -Wlarger-than=5000
+add_flag -Wframe-larger-than=5000
+add_flag -Wvla
+
+add_flag -Wno-error=disabled-macro-expansion
+add_flag -Wno-error=padded
+
+clang-11 $C_FLAGS -g tox_push_msg_server.c -lcurl -o tox_push_msg_server || exit 1
 
 
 #------------------------

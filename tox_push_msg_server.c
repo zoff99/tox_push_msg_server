@@ -67,7 +67,7 @@
 #define MAX_HEADER_LENGTH 1000
 #define MAX_POSTDATA_LENGTH 2000
 
-int trigger_push(const char *device_token_str);
+static int trigger_push(const char *device_token_str);
 
 
 #define HSTATIC_EPOLL_EVENTS 64
@@ -108,13 +108,12 @@ typedef struct server {
 	connection_handler connection_handler;
 } server_t;
 
-server_t* server = NULL;
+static server_t* server_global = NULL;
 
 
 /* TCP stuff */
 
-connection_t*
-connection_create(connection_type_e type)
+static connection_t* connection_create(connection_type_e type)
 {
 	connection_t* conn = malloc(sizeof(*conn));
 
@@ -130,8 +129,7 @@ connection_create(connection_type_e type)
 	return conn;
 }
 
-int
-connection_destroy(connection_t* conn)
+static int connection_destroy(connection_t* conn)
 {
 	int err;
 
@@ -151,8 +149,7 @@ connection_destroy(connection_t* conn)
 	return 0;
 }
 
-int
-fd_make_nonblocking(int socket)
+static int fd_make_nonblocking(int socket)
 {
 	int err = 0;
 	int flags;
@@ -177,10 +174,9 @@ fd_make_nonblocking(int socket)
 }
 
 
-server_t*
-server_create(connection_handler handler)
+static server_t* server_create(connection_handler handler)
 {
-	server_t*     server;
+	server_t*     server_local;
 	connection_t* conn;
 
 	if (handler == NULL) {
@@ -194,46 +190,45 @@ server_create(connection_handler handler)
 		return NULL;
 	}
 
-	server = malloc(sizeof(*server));
-	if (server == NULL) {
+	server_local = malloc(sizeof(*server_local));
+	if (server_local == NULL) {
 		perror("malloc");
 		printf("failed to allocate memory for server struct\n");
 		return NULL;
 	}
 
-	server->epoll_fd           = -1;
-	server->conn               = conn;
-	server->connection_handler = handler;
+	server_local->epoll_fd           = -1;
+	server_local->conn               = conn;
+	server_local->connection_handler = handler;
 
-	return server;
+	return server_local;
 }
 
-int
-server_destroy(server_t* server)
+static int server_destroy(server_t* server_local)
 {
 	int err = 0;
 
-	if (server->conn != NULL) {
-		err = connection_destroy(server->conn);
+	if (server_local->conn != NULL) {
+		err = connection_destroy(server_local->conn);
 		if (err) {
 			printf("failed to destroy server connection\n");
 			return err;
 		}
 
-		free(server->conn);
+		free(server_local->conn);
 
-		server->conn = NULL;
+		server_local->conn = NULL;
 	}
 
-	if (server->epoll_fd != -1) {
-		err = close(server->epoll_fd);
+	if (server_local->epoll_fd != -1) {
+		err = close(server_local->epoll_fd);
 		if (err == -1) {
 			perror("close");
 			printf("failed to close server epoll fd\n");
 			return err;
 		}
 
-		server->epoll_fd = -1;
+		server_local->epoll_fd = -1;
 	}
 
 	return 0;
@@ -244,8 +239,7 @@ server_destroy(server_t* server)
  * Accepts all incoming established TCP connections
  * until a blocking `accept(2)` would occur.
  */
-int
-_accept_all(server_t* server)
+static int _accept_all(server_t* server_local)
 {
 	struct sockaddr    in_addr;
 	struct epoll_event event  = { 0 };
@@ -255,7 +249,7 @@ _accept_all(server_t* server)
 	int                err;
 
 	while (1) {
-		in_fd = accept(server->conn->fd, &in_addr, &in_len);
+		in_fd = accept(server_local->conn->fd, &in_addr, &in_len);
 		if (in_fd == -1) {
 			if ((errno == EAGAIN) || (errno == EWOULDBLOCK)) {
 				return 0;
@@ -282,19 +276,16 @@ _accept_all(server_t* server)
 		event.events   = EPOLLIN | EPOLLET;
 
 		// add the non-blocking socket to the epoll set
-		err = epoll_ctl(server->epoll_fd, EPOLL_CTL_ADD, in_fd, &event);
+		err = epoll_ctl(server_local->epoll_fd, EPOLL_CTL_ADD, in_fd, &event);
 		if (err == -1) {
 			perror("epoll_ctl");
 			printf("couldn't add client socket to epoll set\n");
 			return -1;
 		}
 	}
-
-	return 0;
 }
 
-int
-server_serve(server_t* server)
+static int server_serve(server_t* server_local)
 {
 	int epoll_fd;
 	int err = 0;
@@ -311,7 +302,7 @@ server_serve(server_t* server)
 		return err;
 	}
 
-	server->epoll_fd = epoll_fd;
+	server_local->epoll_fd = epoll_fd;
 
 	// Interest in particular file descriptors is then
 	// registered via epoll_ctl(2) - adds the file descriptor to
@@ -321,11 +312,11 @@ server_serve(server_t* server)
 	// on the epoll instance referred to by the file descriptor
 	// epoll_fd and associate the event `event` with the internal file
 	// linked to epoll_fd.
-	event.data.ptr = server->conn;
+	event.data.ptr = server_local->conn;
 	event.events   = EPOLLIN | EPOLLET;
 
 	err =
-	  epoll_ctl(server->epoll_fd, EPOLL_CTL_ADD, server->conn->fd, &event);
+	  epoll_ctl(server_local->epoll_fd, EPOLL_CTL_ADD, server_local->conn->fd, &event);
 	if (err == -1) {
 		perror("epoll_ctl");
 		printf("failed to add listen socket to epoll event");
@@ -343,7 +334,7 @@ server_serve(server_t* server)
 		// us
 		// to retrieve these events by simply looping over the array.
 		int fds_len = epoll_wait(
-		  server->epoll_fd, events, HSTATIC_EPOLL_EVENTS, -1);
+		  server_local->epoll_fd, events, HSTATIC_EPOLL_EVENTS, -1);
 		if (fds_len == -1) {
 			if (errno == EINTR) {
 				return 0;
@@ -386,7 +377,7 @@ server_serve(server_t* server)
 			// much
 			// as we can until an EAGAIN or EWOULDBLOCK is reached.
 			if (event_conn->type == CONNECTION_TYPE_SERVER) {
-				err = _accept_all(server);
+				err = _accept_all(server_local);
 				if (err) {
 					printf("failed to accept "
 					       "connection\n");
@@ -397,16 +388,13 @@ server_serve(server_t* server)
 			}
 
 			// TODO handle possible errors?
-			server->connection_handler(events[i].data.ptr);
+			server_local->connection_handler(events[i].data.ptr);
 		}
 	}
-
-	return 0;
 }
 
 
-int
-server_listen(server_t* server)
+static int server_listen(server_t* server_local)
 {
 	int                err         = 0;
 	struct sockaddr_in server_addr = { 0 };
@@ -436,7 +424,7 @@ server_listen(server_t* server)
 	//      SOCK_STREAM          Provides sequenced, reliable,
 	//                           two-way, connection-based byte
 	//                           streams.
-	err = (server->conn->fd = socket(AF_INET, SOCK_STREAM, 0));
+	err = (server_local->conn->fd = socket(AF_INET, SOCK_STREAM, 0));
 	if (err == -1) {
 		perror("socket");
 		printf("Failed to create socket endpoint\n");
@@ -449,7 +437,7 @@ server_listen(server_t* server)
 	// Here we cast `sockaddr_in` to `sockaddr` and specify the
 	// length such that `bind` can pick the values from the
 	// right offsets when interpreting the structure pointed to.
-	err = bind(server->conn->fd,
+	err = bind(server_local->conn->fd,
 	           (struct sockaddr*)&server_addr,
 	           sizeof(server_addr));
 	if (err == -1) {
@@ -461,7 +449,7 @@ server_listen(server_t* server)
 	// Makes the server socket non-blocking such that calls that
 	// would block return a -1 with EAGAIN or EWOULDBLOCK and
 	// return immediately.
-	err = fd_make_nonblocking(server->conn->fd);
+	err = fd_make_nonblocking(server_local->conn->fd);
 	if (err) {
 		printf("failed to make server socket nonblocking\n");
 		return err;
@@ -470,7 +458,7 @@ server_listen(server_t* server)
 	// listen() marks the socket referred to by sockfd as a
 	// passive socket, that is, as a socket that will be used to accept
 	// incoming connection requests using accept(2).
-	err = listen(server->conn->fd, HSTATIC_TCP_BACKLOG);
+	err = listen(server_local->conn->fd, HSTATIC_TCP_BACKLOG);
 	if (err == -1) {
 		perror("listen");
 		printf("Failed to put socket in passive mode\n");
@@ -483,29 +471,18 @@ server_listen(server_t* server)
 static const char* tcp_response = "OK\r\n";
 static const size_t tcp_response_len = 4;
 
-int
-tcp_handler(connection_t* conn)
+static int tcp_handler(connection_t* conn)
 {
-	int  n = 0;
+	ssize_t  n = 0;
 	char buf[HSTATIC_TCP_MAX_INPUT_BYTES + 1];
     memset(buf, 0, HSTATIC_TCP_MAX_INPUT_BYTES + 1);
 
-	//for (int jj=0;jj<4;jj++) {
-		n = read(conn->fd, buf, HSTATIC_TCP_MAX_INPUT_BYTES);
-		if (n == -1) {
-			//if (errno == EAGAIN || errno == EWOULDBLOCK) {
-			//	//break;
-			//}
-
-			perror("read");
-			printf("failed to read from the client\n");
-			return -1;
-		}
-
-		//if (n == 0) {
-		//	break;
-		//}
-	//}
+    n = read(conn->fd, buf, HSTATIC_TCP_MAX_INPUT_BYTES);
+    if (n == -1) {
+        perror("read");
+        printf("failed to read from the client\n");
+        return -1;
+    }
 
     // do our FCM push triggering here --------------------
     if ((n > 20) && (n < HSTATIC_TCP_MAX_INPUT_BYTES))
@@ -528,18 +505,17 @@ tcp_handler(connection_t* conn)
 	return 0;
 }
 
-void
-sig_handler(int signo __attribute__((unused)))
+static void sig_handler(int signo __attribute__((unused)))
 {
 	int err;
 
-	if (server == NULL) {
+	if (server_global == NULL) {
 		exit(0);
 	}
 
-	err = server_destroy(server);
+	err = server_destroy(server_global);
 	if (err) {
-		printf("errored while gracefully destroying server\n");
+		printf("errored while gracefully destroying server_global\n");
 		exit(err);
 	}
 }
@@ -551,7 +527,7 @@ struct string {
     size_t len;
 };
 
-void init_string(struct string *s)
+static void init_string(struct string *s)
 {
     s->len = 0;
     s->ptr = calloc(1, s->len + 1);
@@ -565,7 +541,7 @@ void init_string(struct string *s)
     s->ptr[0] = '\0';
 }
 
-size_t writefunc(void *ptr, size_t size, size_t nmemb, struct string *s)
+static size_t writefunc(void *ptr, size_t size, size_t nmemb, struct string *s)
 {
     size_t new_len = s->len + size*nmemb;
     s->ptr = realloc(s->ptr, new_len+1);
@@ -583,7 +559,7 @@ size_t writefunc(void *ptr, size_t size, size_t nmemb, struct string *s)
     return size*nmemb;
 }
 
-int trigger_push(const char *device_token_str)
+static int trigger_push(const char *device_token_str)
 {
     CURL *curl = NULL;
     CURLcode res;
@@ -668,36 +644,36 @@ int main(void)
 		return 1;
 	}
 
-    server = server_create(&tcp_handler);
-	if (server == NULL)
+    server_global = server_create(&tcp_handler);
+	if (server_global == NULL)
     {
 		printf("failed to instantiate server\n");
 		return 1;
 	}
 
-	err = server_listen(server);
+	err = server_listen(server_global);
 	if (err)
     {
 		printf("Failed to listen on address: 8080\n");
 		return err;
 	}
 
-	err = server_serve(server);
+	err = server_serve(server_global);
 	if (err)
     {
 		printf("Failed serving\n");
 		return err;
 	}
 
-	err = server_destroy(server);
+	err = server_destroy(server_global);
 	if (err)
     {
 		printf("failed to destroy server\n");
 		return 1;
 	}
 
-	free(server);
-	server = NULL;
+	free(server_global);
+	server_global = NULL;
 
     return 0;
 }
