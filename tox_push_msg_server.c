@@ -468,8 +468,11 @@ static int server_listen(server_t* server_local)
 	return 0;
 }
 
-static const char* tcp_response = "OK\r\n";
-static const size_t tcp_response_len = 4;
+static const char* tcp_response_ok = "OK\r\n";
+static const size_t tcp_response_ok_len = 4;
+
+static const char* tcp_response_error = "ERR\r\n";
+static const size_t tcp_response_error_len = 5;
 
 static int tcp_handler(connection_t* conn)
 {
@@ -485,17 +488,25 @@ static int tcp_handler(connection_t* conn)
     }
 
     // do our FCM push triggering here --------------------
+    int res = 1;
     if ((n > 20) && (n < HSTATIC_TCP_MAX_INPUT_BYTES))
     {
         // fprintf(stderr, "buf=%s\n", buf);
-        int res = trigger_push(buf);
-        if (res) {}
+        res = trigger_push(buf);
         // fprintf(stderr, "res=%d\n", res);
     }
 
     // do our FCM push triggering here --------------------
 
-	n = write(conn->fd, tcp_response, tcp_response_len);
+    if (res == 0)
+    {
+        n = write(conn->fd, tcp_response_ok, tcp_response_ok_len);
+    }
+    else
+    {
+        n = write(conn->fd, tcp_response_error, tcp_response_error_len);
+    }
+
 	if (n == -1) {
 		perror("write");
 		printf("failed to write to client\n");
